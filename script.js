@@ -23,7 +23,7 @@ let wires = [];
 let gates = [];
 
 window.addEventListener('resize', resizeCanvas, false);
-		
+
 function resizeCanvas() {
 	canvas.width = canvas.clientWidth;
 	canvas.height = canvas.clientHeight;
@@ -34,8 +34,7 @@ function resizeCanvas() {
 }
 
 class Position {
-	constructor(x = 0, y = 0)
-	{
+	constructor(x = 0, y = 0) {
 		this.x = x;
 		this.y = y;
 	}
@@ -47,9 +46,9 @@ class Point {
 	constructor(position = new Position(0, 0)) {
 		this.position = position;
 	}
-	
+
 	position;
-	
+
 	draw() {
 		let pos = worldToViewportPos(this.position);
 		ctx.fillStyle = "red";
@@ -66,7 +65,7 @@ class Wire {
 		this.startPositions.push(startPosition);
 		this.endPositions.push(endPosition);
 	}
-	
+
 	id = "";
 	startPositions = [];
 	endPositions = [];
@@ -95,15 +94,12 @@ class Wire {
 
 	addInput(input) {
 		let x = this.inputs.findIndex(i => i.id == input.id && i.pinIndex == input.pinIndex);
-		if(x == -1)
-		{
+		if (x == -1) {
 			this.inputs.push(input);
 		}
 		let idx = gates.findIndex(gate => gate.id == input.id);
-		if(idx > -1)
-		{
+		if (idx > -1) {
 			gates[idx].setInput(input.pinIndex, this.state);
-			console.log(idx);
 		}
 	}
 
@@ -115,8 +111,7 @@ class Wire {
 
 	addOutput(output) {
 		let x = this.outputs.findIndex(i => i.id == output.id && i.pinIndex == output.pinIndex);
-		if(x == -1)
-		{
+		if (x == -1) {
 			this.outputs.push(output);
 		}
 	}
@@ -128,15 +123,13 @@ class Wire {
 	}
 
 	setState(value) {
-		if(value == this.state)
-		{
+		if (value == this.state) {
 			return;
 		}
 		this.state = value;
 		this.inputs.forEach(input => {
 			let idx = gates.findIndex(gate => gate.id == input.id);
-			if(idx > -1)
-			{
+			if (idx > -1) {
 				gates[idx].setInput(input.pinIndex, this.state);
 			}
 		});
@@ -155,18 +148,22 @@ class Pin {
 }
 
 class Gate {
-	constructor(id, type, position, size = {w: 30, h: 30}) {
+	constructor(id, type, position, clickable = false) {
 		this.id = id;
+		this.size = { w: 30, h: 30 };
 		let numOfInputs = (type == "not" ? 1 : 2);
-		for(let i = 0; i < numOfInputs; ++i)
+		if (type == "btn") 
 		{
-			let pos = new Position(-30, (-size.h + (i+1) * size.h*2/(numOfInputs+1)));
+			numOfInputs = 0;
+		}
+		for (let i = 0; i < numOfInputs; ++i) {
+			let pos = new Position(-30, (-this.size.h + (i + 1) * this.size.h * 2 / (numOfInputs + 1)));
 			this.inputs.push(new Pin(null, pos))
 		}
 		this.type = type;
 		this.position = position;
-		this.size = size;
-		this.output = new Pin(null, new Position(size.w, 0));
+		this.output = new Pin((type == "btn"), new Position(this.size.w, 0));
+		this.clickAction = this.calculate;
 		this.calculate();
 	}
 
@@ -176,6 +173,8 @@ class Gate {
 	type = "";
 	position = new Position();
 	size;
+	clickable;
+	clickAction = this.calculate;
 
 	draw() {
 		let clPos = worldToViewportPos(this.position);
@@ -193,29 +192,19 @@ class Gate {
 		ctx.ellipse(oPos.x, oPos.y, 3, 3, 0, 0, 2 * Math.PI);
 		ctx.closePath();
 		ctx.fill();
-		ctx.font = `${this.size.h/2}px serif`;
-		ctx.fillText(this.type, clPos.x - this.size.w/2, clPos.y);
+		ctx.font = `${this.size.h / 2}px serif`;
+		ctx.fillText(this.type, clPos.x - this.size.w / 2, clPos.y);
 	}
 
 	setInput(index, value) {
-		if(this.inputs[index].value == value && this.inputs[index].value != null)
-		{
-			console.log(this.inputs[index].value);
+		if (this.inputs[index].value == value && this.inputs[index].value != null) {
 			return;
 		}
 		this.inputs[index].value = value;
 		this.calculate();
-		//foreach output of gate/chip
-		wires.forEach(wire => {
-			let i = wire.outputs.findIndex(out => (out.id == this.id));
-			if(i > -1)
-			{
-				wire.setState(this.output.value);
-			}
-		});
 	}
 	calculate() {
-		switch(this.type) {
+		switch (this.type) {
 			case "and":
 				this.output.value = this.inputs[0].value && this.inputs[1].value;
 				break;
@@ -228,7 +217,17 @@ class Gate {
 			case "xor":
 				this.output.value = (this.inputs[0].value || this.inputs[1].value) && !(this.inputs[0].value && this.inputs[1].value);
 				break;
+			case "btn":
+				this.output.value = !this.output.value;
+				break;
 		}
+		//foreach output of gate/chip
+		wires.forEach(wire => {
+			let i = wire.outputs.findIndex(out => (out.id == this.id));
+			if (i > -1) {
+				wire.setState(this.output.value);
+			}
+		});
 	}
 
 }
@@ -244,25 +243,22 @@ canvas.addEventListener("mousemove", (event) => {
 
 	connectedWireIndex = -1;
 	connectedGatePin = null;
-	
-	if(currentTool == 'pen' && startLine)
-	{		
+
+	if (currentTool == 'pen' && startLine) {
 		wires.push(new Wire("", mouseDown, mouseMove));
 	}
 
-	if(currentTool == 'hand' && startPan)
-	{
+	if (currentTool == 'hand' && startPan) {
 		let move = worldToViewportPos(mouseMove);
 		currPosition.x += lastMouseMove.x - move.x;
 		currPosition.y += lastMouseMove.y - move.y;
 		lastMouseMove = move;
 	}
 
-	if(currentTool.includes("gate"))
-	{
+	if (currentTool.includes("gate")) {
 		drawTemporaryGate(currentTool.slice(0, -4), mouseMove);
 	}
-	
+
 	cursor.position = mouseMove;
 	drawCanvas();
 });
@@ -271,19 +267,25 @@ canvas.addEventListener("mousedown", (event) => {
 	mouseDown = viewportToWorldPos(new Position(event.offsetX, event.offsetY));
 
 	mouseDown = checkIfNearSomething(mouseDown);
-	
-	if(currentTool == 'pen') {
-		if(connectedWireIndex > -1) wireStartConected = connectedWireIndex;
-		if(connectedGatePin != null) wireStartGateConnected = connectedGatePin;
+
+	if (currentTool == 'pen') {
+		if (connectedWireIndex > -1) wireStartConected = connectedWireIndex;
+		if (connectedGatePin != null) wireStartGateConnected = connectedGatePin;
 		startLine = true;
 	}
-	else if(currentTool == 'hand')
-	{
+
+	else if (currentTool == 'hand') {
+		if (checkIfClick(mouseDown)) return;
 		startPan = true;
 		lastMouseMove = worldToViewportPos(mouseDown);
 	}
-	else if(currentTool.includes("gate")) {
-		gates.push(new Gate(getRandomId(5), currentTool.slice(0, -4), mouseDown));
+	else if (currentTool.includes("gate")) {
+		if (currentTool == "btngate") {
+			gates.push(new Gate(getRandomId(5), currentTool.slice(0, -4), mouseDown, true));
+		}
+		else {
+			gates.push(new Gate(getRandomId(5), currentTool.slice(0, -4), mouseDown));
+		}
 	}
 });
 
@@ -291,40 +293,30 @@ canvas.addEventListener("mouseup", (event) => {
 	let mouseUp = viewportToWorldPos(new Position(event.offsetX, event.offsetY));
 
 	deleteTemporaries();
-	
+
 	mouseUp = checkIfNearSomething(mouseUp);
 
-	if(currentTool == 'pen' && startLine)
-	{
-		if(connectedWireIndex > -1)
-		{
+	if (currentTool == 'pen' && startLine) {
+		if (connectedWireIndex > -1) {
 			wireEndConected = connectedWireIndex;
 		}
 
-		if((wireStartConected > -1) || (wireEndConected > -1))
-		{
-			if(wireEndConected > -1 && (wireStartConected == -1 || wireEndConected == wireStartConected))
-			{
+		if ((wireStartConected > -1) || (wireEndConected > -1)) {
+			if (wireEndConected > -1 && (wireStartConected == -1 || wireEndConected == wireStartConected)) {
 				wires[wireEndConected].addLine(mouseDown, mouseUp);
-				if(connectedGatePin != null)
-				{
-					if(connectedGatePin.type == "input")
-					{
+				if (connectedGatePin != null) {
+					if (connectedGatePin.type == "input") {
 						wires[wireEndConected].addInput(connectedGatePin);
 					}
-					else
-					{
+					else {
 						wires[wireEndConected].addOutput(connectedGatePin);
 					}
 				}
-				if(wireStartGateConnected != null)
-				{
-					if(wireStartGateConnected.type == "input")
-					{
+				if (wireStartGateConnected != null) {
+					if (wireStartGateConnected.type == "input") {
 						wires[wireEndConected].addInput(wireStartGateConnected);
 					}
-					else
-					{
+					else {
 						wires[wireEndConected].addOutput(wireStartGateConnected);
 					}
 				}
@@ -333,28 +325,21 @@ canvas.addEventListener("mouseup", (event) => {
 				wireEndConected = -1;
 				wireStartConected = -1;
 			}
-			else if(wireStartConected > -1 && (wireEndConected == -1 || wireEndConected == wireStartConected))
-			{
+			else if (wireStartConected > -1 && (wireEndConected == -1 || wireEndConected == wireStartConected)) {
 				wires[wireStartConected].addLine(mouseDown, mouseUp);
-				if(connectedGatePin != null)
-				{
-					if(connectedGatePin.type == "input")
-					{
+				if (connectedGatePin != null) {
+					if (connectedGatePin.type == "input") {
 						wires[wireStartConected].addInput(connectedGatePin);
 					}
-					else
-					{
+					else {
 						wires[wireStartConected].addOutput(connectedGatePin);
 					}
 				}
-				if(wireStartGateConnected != null)
-				{
-					if(wireStartGateConnected.type == "input")
-					{
+				if (wireStartGateConnected != null) {
+					if (wireStartGateConnected.type == "input") {
 						wires[wireStartConected].addInput(wireStartGateConnected);
 					}
-					else
-					{
+					else {
 						wires[wireStartConected].addOutput(wireStartGateConnected);
 					}
 				}
@@ -363,8 +348,7 @@ canvas.addEventListener("mouseup", (event) => {
 				wireEndConected = -1;
 				wireStartConected = -1;
 			}
-			else if((wireStartConected > -1) && (wireEndConected > -1) && (wireStartConected != wireEndConected))
-			{
+			else if ((wireStartConected > -1) && (wireEndConected > -1) && (wireStartConected != wireEndConected)) {
 				wires[wireEndConected].startPositions.forEach((pos, idx) => {
 					wires[wireStartConected].addLine(pos, wires[wireEndConected].endPositions[idx]);
 				});
@@ -374,57 +358,44 @@ canvas.addEventListener("mouseup", (event) => {
 				wires[wireStartConected].appendOutputs(wires[wireEndConected].outputs);
 
 				wires[wireStartConected].addLine(mouseDown, mouseUp);
-				
-				if(connectedGatePin != null)
-				{
-					if(connectedGatePin.type == "input")
-					{
+
+				if (connectedGatePin != null) {
+					if (connectedGatePin.type == "input") {
 						wires[wireStartConected].addInput(connectedGatePin);
 					}
-					else
-					{
+					else {
 						wires[wireStartConected].addOutput(connectedGatePin);
 					}
 				}
-				if(wireStartGateConnected != null)
-				{
-					if(wireStartGateConnected.type == "input")
-					{
+				if (wireStartGateConnected != null) {
+					if (wireStartGateConnected.type == "input") {
 						wires[wireStartConected].addInput(wireStartGateConnected);
 					}
-					else
-					{
+					else {
 						wires[wireStartConected].addOutput(wireStartGateConnected);
 					}
 				}
 				connectedGatePin = null;
 				wireStartGateConnected = null;
-				
+
 				wires.splice(wireEndConected, 1);
 			}
 		}
-		else
-		{
+		else {
 			let wire = new Wire(getRandomId(5), mouseDown, mouseUp);
-			if(connectedGatePin != null)
-			{
-				if(connectedGatePin.type == "input")
-				{
+			if (connectedGatePin != null) {
+				if (connectedGatePin.type == "input") {
 					wire.addInput(connectedGatePin);
 				}
-				else
-				{
+				else {
 					wire.addOutput(connectedGatePin);
 				}
 			}
-			if(wireStartGateConnected != null)
-			{
-				if(wireStartGateConnected.type == "input")
-				{
+			if (wireStartGateConnected != null) {
+				if (wireStartGateConnected.type == "input") {
 					wire.addInput(wireStartGateConnected);
 				}
-				else
-				{
+				else {
 					wire.addOutput(wireStartGateConnected);
 				}
 			}
@@ -434,8 +405,7 @@ canvas.addEventListener("mouseup", (event) => {
 		}
 		startLine = false;
 	}
-	if(currentTool == 'hand' && startPan)
-	{
+	if (currentTool == 'hand' && startPan) {
 		startPan = false;
 	}
 });
@@ -467,11 +437,11 @@ function drawCanvas() {
 }
 
 function viewportToWorldPos(position) {
-	return new Position(position.x - cW/2 + currPosition.x, position.y - cH/2 + currPosition.y);
+	return new Position(position.x - cW / 2 + currPosition.x, position.y - cH / 2 + currPosition.y);
 }
 
 function worldToViewportPos(position) {
-	return new Position(cW/2 + position.x - currPosition.x, cH/2 + position.y - currPosition.y);
+	return new Position(cW / 2 + position.x - currPosition.x, cH / 2 + position.y - currPosition.y);
 }
 
 function setTool(tool) {
@@ -481,11 +451,24 @@ function setTool(tool) {
 function getRandomId(length) {
 	letters = "abcdefghijklmnopqrstuvwxyz1234567890";
 	id = "";
-	for(let i = 0; i < length; i++)
-	{
+	for (let i = 0; i < length; i++) {
 		id = id + letters[Math.floor(Math.random() * letters.length)];
 	}
 	return id;
+}
+
+function checkIfClick(position) {
+	let mX = position.x, mY = position.y;
+	for (let i = 0; i < gates.length; ++i) {
+		if (gates[i].type == "btn" && gates[i].id != "") {
+			let d = Math.sqrt((mX - gates[i].position.x) * (mX - gates[i].position.x) + (mY - gates[i].position.y) * (mY - gates[i].position.y));
+			if (d < 30) {
+				gates[i].clickAction();
+				return 1
+			}
+		}
+	};
+	return 0;
 }
 
 function checkIfNearSomething(position) {
@@ -500,67 +483,60 @@ function checkIfNearSomething(position) {
 			let sX = sPos.x, sY = sPos.y;
 			let eX = wire.endPositions[idx].x, eY = wire.endPositions[idx].y;
 
-			p = (mY - sY + (eY-sY)/(eX-sX) * sX - (sX-eX)/(eY-sY) * mX)/((eY-sY)/(eX-sX) - (sX-eX)/(eY-sY));
-			q = (sX-eX)/(eY-sY) * (p - mX) + mY;
+			p = (mY - sY + (eY - sY) / (eX - sX) * sX - (sX - eX) / (eY - sY) * mX) / ((eY - sY) / (eX - sX) - (sX - eX) / (eY - sY));
+			q = (sX - eX) / (eY - sY) * (p - mX) + mY;
 
-			let d = Math.sqrt((mX-p)*(mX-p) + (mY-q)*(mY-q));
+			let d = Math.sqrt((mX - p) * (mX - p) + (mY - q) * (mY - q));
 
-			let dotDS = Math.sqrt((mX-sX)*(mX-sX) + (mY-sY)*(mY-sY));
-			let dotDE = Math.sqrt((mX-eX)*(mX-eX) + (mY-eY)*(mY-eY));
-			
-			if(dotDS < minDistDot && dotDS < minDist)
-			{
+			let dotDS = Math.sqrt((mX - sX) * (mX - sX) + (mY - sY) * (mY - sY));
+			let dotDE = Math.sqrt((mX - eX) * (mX - eX) + (mY - eY) * (mY - eY));
+
+			if (dotDS < minDistDot && dotDS < minDist) {
 				minDist = dotDS;
 				resultPos = new Position(sX, sY);
 				connectedWireIndex = wireIndex;
 			}
-			
-			if(dotDE < minDistDot && dotDE < minDist)
-			{
+
+			if (dotDE < minDistDot && dotDE < minDist) {
 				minDist = dotDE;
 				resultPos = new Position(eX, eY);
 				connectedWireIndex = wireIndex;
 			}
-			
-			
-			if(p <= Math.min(sX, eX) || p >= Math.max(sX, eX))
-			{
+
+
+			if (p <= Math.min(sX, eX) || p >= Math.max(sX, eX)) {
 				return;
 			}
 
-			if(d < minDist)
-			{
-				if(d < minDistLine)
-				{
+			if (d < minDist) {
+				if (d < minDistLine) {
 					minDist = d;
 					resultPos = new Position(p, q);
 					connectedWireIndex = wireIndex;
-				}	
-			}	
-		});	
+				}
+			}
+		});
 	})
 	gates.forEach(gate => {
 		let outputWorldPos = new Position(gate.position.x + gate.output.relativePosition.x, gate.position.y + gate.output.relativePosition.y);
 
-		let d = Math.sqrt((mX-outputWorldPos.x)*(mX-outputWorldPos.x) + (mY-outputWorldPos.y)*(mY-outputWorldPos.y));
+		let d = Math.sqrt((mX - outputWorldPos.x) * (mX - outputWorldPos.x) + (mY - outputWorldPos.y) * (mY - outputWorldPos.y));
 
-		if(d < minDist && d < minDistDot)
-		{
+		if (d < minDist && d < minDistDot) {
 			resultPos = outputWorldPos;
 			minDist = d;
-			connectedGatePin = {id: gate.id, pinIndex: 0, type: "output"};
+			connectedGatePin = { id: gate.id, pinIndex: 0, type: "output" };
 			connectedWireIndex = -1;
 		}
 		gate.inputs.forEach((input, idx) => {
 			let inputWorldPos = new Position(gate.position.x + input.relativePosition.x, gate.position.y + input.relativePosition.y);
 
-			let d = Math.sqrt((mX-inputWorldPos.x)*(mX-inputWorldPos.x) + (mY-inputWorldPos.y)*(mY-inputWorldPos.y));
+			let d = Math.sqrt((mX - inputWorldPos.x) * (mX - inputWorldPos.x) + (mY - inputWorldPos.y) * (mY - inputWorldPos.y));
 
-			if(d < minDist && d < minDistDot)
-			{
+			if (d < minDist && d < minDistDot) {
 				resultPos = inputWorldPos;
 				minDist = d;
-				connectedGatePin = {id: gate.id, pinIndex: idx, type: "input"};
+				connectedGatePin = { id: gate.id, pinIndex: idx, type: "input" };
 				connectedWireIndex = -1;
 			}
 		})
