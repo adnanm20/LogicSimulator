@@ -112,6 +112,11 @@ class Wire {
 	addOutput(output) {
 		let x = this.outputs.findIndex(i => i.id == output.id && i.pinIndex == output.pinIndex);
 		if (x == -1) {
+			let gateIndex = gates.findIndex(gate => gate.id == output.id);
+			if(gateIndex > -1)
+			{
+				this.state = gates[gateIndex].output.value;				
+			}
 			this.outputs.push(output);
 		}
 	}
@@ -238,6 +243,13 @@ let cursor = new Point();
 canvas.addEventListener("mousemove", (event) => {
 	let mouseMove = viewportToWorldPos(new Position(event.offsetX, event.offsetY));
 	deleteTemporaries();
+	
+	if (currentTool == 'hand' && startPan) {
+		let move = worldToViewportPos(mouseMove);
+		currPosition.x += lastMouseMove.x - move.x;
+		currPosition.y += lastMouseMove.y - move.y;
+		lastMouseMove = move;
+	}
 
 	mouseMove = (checkIfNearSomething(mouseMove));
 
@@ -246,14 +258,7 @@ canvas.addEventListener("mousemove", (event) => {
 
 	if (currentTool == 'pen' && startLine) {
 		wires.push(new Wire("", mouseDown, mouseMove));
-	}
-
-	if (currentTool == 'hand' && startPan) {
-		let move = worldToViewportPos(mouseMove);
-		currPosition.x += lastMouseMove.x - move.x;
-		currPosition.y += lastMouseMove.y - move.y;
-		lastMouseMove = move;
-	}
+	}	
 
 	if (currentTool.includes("gate")) {
 		drawTemporaryGate(currentTool.slice(0, -4), mouseMove);
@@ -423,6 +428,12 @@ function clearCanvas() {
 	ctx.clearRect(0, 0, cW, cH);
 }
 
+function eraseCanvas() {
+	wires = [];
+	gates = [];
+	ctx.clearRect(0, 0, cW, cH);
+}
+
 drawCanvas();
 
 function drawCanvas() {
@@ -542,4 +553,11 @@ function checkIfNearSomething(position) {
 		})
 	});
 	return resultPos;
+}
+
+function dumpCircuit() {
+	let obj = {wires: wires, gates: gates};
+	let text = JSON.stringify(obj, null, 2);
+
+	console.log(text);
 }

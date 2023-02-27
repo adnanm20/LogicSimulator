@@ -79,6 +79,21 @@ main {
 	background-color: var(--tool-hover-color);
 }
 
+.canvasmenu {
+	padding: 4px;
+	margin: auto;
+	margin-top: 12px;
+	width: 100%;
+}
+
+.clearCanvas {
+	background-color: var(--tool-bg-color);
+	border-bottom: 1px solid var(--menu-bg-color);
+	padding: 2px;
+	width: 100%;
+	text-align: center;
+}
+
 .canvasWrap {
 	width: 100%;
 	height: calc(100vh - 50px);
