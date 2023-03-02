@@ -55,14 +55,14 @@ main {
 	border-right: 1px solid var(--menu-bg-color);
 }
 
-.gates {
+.chips {
 	padding: 4px;
 	margin: auto;
 	margin-top: 24px;
 	width: 100%;
 }
 
-.gate {
+.chip {
 	background-color: var(--tool-bg-color);
 	border-bottom: 1px solid var(--menu-bg-color);
 	padding: 2px;
@@ -70,11 +70,11 @@ main {
 	text-align: center;
 }
 
-.gates:last-child {
+.chips:last-child {
 	border: none;
 }
 
-.gate:hover {
+.chip:hover {
 	cursor: pointer;
 	background-color: var(--tool-hover-color);
 }
