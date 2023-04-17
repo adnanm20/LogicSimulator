@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Logic Simulator</title>
+	</head>
+	<link rel="stylesheet" href="./style.css">
+	<body>
+		<header>Logic Simulator ------ support -- login</header>
+		<main>
+			<div class="toolbar">
+				<div class="tools">
+					<div class="hand" onclick="setTool('hand');">Hand</div>
+					<div class="draw" onclick="setTool('pen');">Draw</div>
+					<div class="select" onclick="setTool('select');">Select</div>
+				</div>
+				<div class="chips">
+					<div class="and chip" onclick="setTool('andchip');">and</div>
+					<div class="not chip" onclick="setTool('notchip');">not</div>
+					<div class="or chip" onclick="setTool('orchip');">or</div>
+					<div class="xor chip" onclick="setTool('xorchip');">xor</div>
+					<div class="btn chip" onclick="setTool('btnchip');">btn</div>
+				</div>
+				<div class="canvasmenu">
+					<div class="clearCanvas" onclick="eraseCanvas()">clear canvas</div>
+				</div>
+			</div>
+			<div class="canvasWrap">
+				<canvas id="canvas"></canvas>
+			</div>
+			<div class="manager"></div>
+			<div class="bottom"></div>
+		</main>
+
+		<script src="./script.js"></script>
+	</body>
+</html>
